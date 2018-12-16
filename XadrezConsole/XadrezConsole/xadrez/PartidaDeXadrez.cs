@@ -7,7 +7,7 @@ namespace xadrez
     {
         public Tabuleiro tab { get; private set; }
         public int turno { get; private set; }
-        public Cor jogadaAtual { get; private set; }
+        public Cor jogadorAtual { get; private set; }
         public bool terminada { get; private set; }
         private HashSet<Peca> pecas;
         private HashSet<Peca> capturadas;
@@ -17,7 +17,7 @@ namespace xadrez
         {
             tab = new Tabuleiro(8, 8);
             turno = 1;
-            jogadaAtual = Cor.Branco;
+            jogadorAtual = Cor.Branco;
             terminada = false;
             xeque = false;
             pecas = new HashSet<Peca>();
@@ -54,13 +54,13 @@ namespace xadrez
         {
             Peca pecaCapturada = executaMovimento(origem, destino);
 
-            if (estaEmXeque(jogadaAtual))
+            if (estaEmXeque(jogadorAtual))
             {
                 desfazMovimento(origem, destino, pecaCapturada);
                 throw new TabuleiroException("Você não pode se colocar em xeque!");
             }
 
-            if (estaEmXeque(adversaria(jogadaAtual)))
+            if (estaEmXeque(adversaria(jogadorAtual)))
             {
                 xeque = true;
             }
@@ -68,9 +68,15 @@ namespace xadrez
             {
                 xeque = false;
             }
-
-            turno++;
-            mudaJogador();
+            if (testeXequeMate(adversaria(jogadorAtual)))
+            {
+                terminada = true;
+            }
+            else
+            {
+                turno++;
+                mudaJogador();
+            }
         }
 
         public void validaPosicaoDeOrigem(Posicao pos)
@@ -79,7 +85,7 @@ namespace xadrez
             {
                 throw new TabuleiroException("Não existe peça na posição de origem escolhida!");
             }
-            if (jogadaAtual != tab.peca(pos).cor)
+            if (jogadorAtual != tab.peca(pos).cor)
             {
                 throw new TabuleiroException("A peça de origem escolhida não é sua!");
             }
@@ -99,13 +105,13 @@ namespace xadrez
 
         private void mudaJogador()
         {
-            if (jogadaAtual == Cor.Branco)
+            if (jogadorAtual == Cor.Branco)
             {
-                jogadaAtual = Cor.Preta;
+                jogadorAtual = Cor.Preta;
             }
             else
             {
-                jogadaAtual = Cor.Branco;
+                jogadorAtual = Cor.Branco;
             }
         }
 
@@ -176,6 +182,38 @@ namespace xadrez
                 }
             }
             return false;
+        }
+
+        public bool testeXequeMate(Cor cor)
+        {
+            if (!estaEmXeque(cor))
+            {
+                return false;
+            }
+            foreach (Peca x in pecasEmJogo(cor))
+            {
+                bool[,] mat = x.movimentosPosiveis();
+                for (int i = 0; i < tab.linhas; i++)
+                {
+                    for (int j = 0; j < tab.colunas; j++)
+                    {
+                        if (mat[i, j])
+                        {
+                            Posicao origem = x.posicao;
+                            Posicao destino = new Posicao(i, j);
+                            Peca pecaCapturada = executaMovimento(origem, destino);
+                            bool testeXeque = estaEmXeque(cor);
+                            desfazMovimento(origem, destino, pecaCapturada);
+                            if (!testeXeque)
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            return true;
+
         }
 
         public void colocarNovaPeca(char coluna, int linha, Peca peca)
